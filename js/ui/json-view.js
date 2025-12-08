@@ -1,5 +1,5 @@
-import { escapeHtml } from "./utils.js";
-import { JSONFormatter } from "./json-formatter.js";
+import { escapeHtml } from '../core/utils/dom.js';
+import { JSONFormatter } from "../core/utils/json-formatter.js";
 
 const formatter = new JSONFormatter();
 

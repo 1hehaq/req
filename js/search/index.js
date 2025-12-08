@@ -1,6 +1,6 @@
 // Search Module
-import { elements } from './ui.js';
-import { highlightHTTP } from './utils.js';
+import { elements } from '../ui/main-ui.js';
+import { highlightHTTP } from '../core/utils/network.js';
 
 export function initSearch() {
     // In-pane search functionality

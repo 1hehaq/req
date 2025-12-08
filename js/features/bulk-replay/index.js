@@ -1,8 +1,11 @@
 // Bulk Replay Logic
-import { state } from './state.js';
-import { elements } from './ui.js';
-import { generateAttackRequests } from './attack-engine.js';
-import { formatBytes, highlightHTTP, renderDiff, escapeHtml } from './utils.js';
+import { state } from '../../core/state.js';
+import { elements } from '../../ui/main-ui.js';
+import { generateAttackRequests } from './engine.js';
+import { formatBytes } from '../../core/utils/format.js';
+import { highlightHTTP } from '../../core/utils/network.js';
+import { renderDiff } from '../../core/utils/misc.js';
+import { escapeHtml } from '../../core/utils/dom.js';
 
 export function setupBulkReplay() {
     const bulkReplayBtn = document.getElementById('bulk-replay-btn');

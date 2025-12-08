@@ -13,16 +13,26 @@ export function initTheme() {
             } else {
                 localStorage.setItem('themePreference', 'light');
             }
-            updateTheme();
+            updateTheme(true); // Pass true to indicate user-initiated change
         });
     }
 
     if (window.matchMedia) {
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateTheme);
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            // Only auto-update if user hasn't set a preference
+            if (!localStorage.getItem('themePreference')) {
+                updateTheme();
+            }
+        });
     }
 }
 
-function updateTheme() {
+function updateTheme(animate = false) {
+    // Add transition class for smooth animation
+    if (animate) {
+        document.body.classList.add('theme-transitioning');
+    }
+
     const pref = localStorage.getItem('themePreference');
     if (pref === 'light') {
         document.body.classList.add('light-theme');
@@ -43,7 +53,15 @@ function updateTheme() {
             document.body.classList.add('light-theme');
         }
     }
+    
     updateThemeIcon();
+    
+    // Remove transition class after animation completes
+    if (animate) {
+        setTimeout(() => {
+            document.body.classList.remove('theme-transitioning');
+        }, 300); // Match CSS transition duration
+    }
 }
 
 function updateThemeIcon() {

@@ -1,5 +1,5 @@
 // Extractor UI Module
-import { escapeHtml, copyToClipboard } from './utils.js';
+import { escapeHtml, copyToClipboard } from '../../core/utils/dom.js';
 
 export function initExtractorUI() {
     const extractorBtn = document.getElementById('extractor-btn');
@@ -20,6 +20,7 @@ export function initExtractorUI() {
     // State
     let currentSecretResults = [];
     let currentEndpointResults = [];
+    let currentResponseSearchResults = [];
     let activeTab = 'secrets';
     let scannedDomains = new Set();
     let selectedDomain = 'all';
@@ -28,6 +29,7 @@ export function initExtractorUI() {
     const ITEMS_PER_PAGE = 10;
     let currentSecretsPage = 1;
     let currentEndpointsPage = 1;
+    let currentResponseSearchPage = 1;
 
     // Helper: Extract domain from URL
     function getDomainFromUrl(url) {
@@ -83,6 +85,11 @@ export function initExtractorUI() {
                 const hasResults = activeTab === 'secrets' ? currentSecretResults.length > 0 : currentEndpointResults.length > 0;
                 extractorSearchContainer.style.display = hasResults ? 'block' : 'none';
             }
+
+            // Populate domain filter for current tab
+            if (activeTab === 'response-search') {
+                populateDomainFilter();
+            }
         });
     });
 
@@ -109,8 +116,8 @@ export function initExtractorUI() {
             try {
                 // Lazy load scanners
                 const [secretScanner, endpointExtractor] = await Promise.all([
-                    import('./secret-scanner.js'),
-                    import('./endpoint-extractor.js')
+                    import('./secrets.js'),
+                    import('./endpoints.js')
                 ]);
 
                 // Get all resources
@@ -192,7 +199,7 @@ export function initExtractorUI() {
     }
 
     // Populate Domain Filter
-    function populateDomainFilter() {
+    async function populateDomainFilter() {
         if (!domainFilter || !domainFilterContainer) return;
 
         // Clear existing options except "All Domains"
@@ -200,10 +207,34 @@ export function initExtractorUI() {
 
         // Collect domain counts
         const domainCounts = {};
-        [...currentSecretResults, ...currentEndpointResults].forEach(result => {
-            const domain = getDomainFromUrl(result.file);
-            domainCounts[domain] = (domainCounts[domain] || 0) + 1;
-        });
+        
+        if (activeTab === 'response-search') {
+            // For response search, use results if available, otherwise use all requests
+            if (currentResponseSearchResults.length > 0) {
+                // Populate from search results
+                currentResponseSearchResults.forEach(result => {
+                    const domain = getDomainFromUrl(result.url);
+                    domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+                });
+            } else {
+                // Populate from all available requests (before search)
+                const { state } = await import('./state.js');
+                const seenDomains = new Set();
+                state.requests.forEach(req => {
+                    const domain = getDomainFromUrl(req.pageUrl || req.request.url);
+                    if (domain && !seenDomains.has(domain)) {
+                        seenDomains.add(domain);
+                        domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+                    }
+                });
+            }
+        } else {
+            // For secrets and endpoints, use results
+            [...currentSecretResults, ...currentEndpointResults].forEach(result => {
+                const domain = getDomainFromUrl(result.file);
+                domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+            });
+        }
 
         // Add domain options sorted alphabetically
         Object.entries(domainCounts)
@@ -219,9 +250,13 @@ export function initExtractorUI() {
         scannedDomains = new Set(Object.keys(domainCounts));
         domainFilterContainer.style.display = scannedDomains.size > 1 ? 'block' : 'none';
 
-        // Reset selected domain
-        selectedDomain = 'all';
-        domainFilter.value = 'all';
+        // Don't reset selected domain if it's still valid
+        if (selectedDomain !== 'all' && !domainCounts[selectedDomain]) {
+            selectedDomain = 'all';
+            domainFilter.value = 'all';
+        } else if (domainFilter.value !== selectedDomain) {
+            domainFilter.value = selectedDomain;
+        }
     }
 
     // Domain Filter Change Handler
@@ -234,10 +269,14 @@ export function initExtractorUI() {
                 currentSecretsPage = 1; // Reset to first page
                 const filtered = filterByDomainAndSearch(currentSecretResults);
                 renderSecretResults(filtered);
-            } else {
+            } else if (activeTab === 'endpoints') {
                 currentEndpointsPage = 1; // Reset to first page
                 const filtered = filterByDomainAndSearch(currentEndpointResults);
                 renderEndpointResults(filtered);
+            } else if (activeTab === 'response-search') {
+                // For response search, filter existing results
+                currentResponseSearchPage = 1; // Reset to first page
+                renderResponseSearchResults(currentResponseSearchResults);
             }
         });
     }
@@ -359,6 +398,60 @@ export function initExtractorUI() {
         });
     }
 
+    function renderResponseSearchResults(results) {
+        const container = document.getElementById('response-search-pagination');
+        if (results.length === 0) {
+            responseSearchResults.innerHTML = '<div class="empty-state">No matches found.</div>';
+            if (container) container.style.display = 'none';
+            return;
+        }
+
+        // Apply domain filter if set
+        let filteredResults = results;
+        if (selectedDomain !== 'all') {
+            filteredResults = results.filter(r => {
+                const domain = getDomainFromUrl(r.url);
+                return domain === selectedDomain;
+            });
+        }
+
+        if (filteredResults.length === 0) {
+            responseSearchResults.innerHTML = '<div class="empty-state">No matches found for selected domain.</div>';
+            if (container) container.style.display = 'none';
+            return;
+        }
+
+        // Pagination Logic
+        const totalPages = Math.ceil(filteredResults.length / ITEMS_PER_PAGE);
+        if (currentResponseSearchPage > totalPages) currentResponseSearchPage = 1;
+
+        const start = (currentResponseSearchPage - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+        const pageResults = filteredResults.slice(start, end);
+
+        let html = '<table class="secrets-table"><thead><tr><th>Method</th><th>File</th><th>Status</th><th>Match Preview</th></tr></thead><tbody>';
+        pageResults.forEach(r => {
+            const methodClass = r.method === 'POST' || r.method === 'PUT' || r.method === 'DELETE' ? 'method-write' : 'method-read';
+            const statusClass = r.status >= 200 && r.status < 300 ? 'status-2xx' : (r.status >= 300 && r.status < 400 ? 'status-3xx' : (r.status >= 400 && r.status < 500 ? 'status-4xx' : 'status-5xx'));
+            const fileName = r.url.split('/').pop() || r.url;
+
+            html += `<tr>
+                <td><span class="http-method ${methodClass}">${escapeHtml(r.method)}</span></td>
+                <td class="secret-file"><a href="${escapeHtml(r.url)}" target="_blank" title="${escapeHtml(r.url)}">${escapeHtml(fileName)}</a></td>
+                <td><span class="status-badge ${statusClass}">${r.status}</span></td>
+                <td class="secret-match" title="${escapeHtml(r.matchSnippet)}">${escapeHtml(r.matchSnippet)}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        responseSearchResults.innerHTML = html;
+
+        // Render Pagination Controls
+        renderPagination(filteredResults.length, currentResponseSearchPage, container, (newPage) => {
+            currentResponseSearchPage = newPage;
+            renderResponseSearchResults(results);
+        });
+    }
+
     // Response Search Logic
     const responseSearchBtn = document.getElementById('response-search-btn');
     const responseSearchInput = document.getElementById('response-search-input');
@@ -404,7 +497,7 @@ export function initExtractorUI() {
             responseSearchInput.disabled = true;
 
             try {
-                const { streamExplanationWithSystem, getAISettings } = await import('./ai.js');
+                const { streamExplanationWithSystem, getAISettings } = await import('../ai/index.js');
                 const { apiKey } = getAISettings();
 
                 if (!apiKey) {
@@ -457,22 +550,9 @@ export function initExtractorUI() {
             responseSearchBtn.disabled = true;
             responseSearchBtn.textContent = 'Searching...';
 
-            // Initialize Results Table
-            responseSearchResults.innerHTML = `
-                <table class="secrets-table">
-                    <thead>
-                        <tr>
-                            <th>Method</th>
-                            <th>File</th>
-                            <th>Status</th>
-                            <th>Match Preview</th>
-                        </tr>
-                    </thead>
-                    <tbody id="response-search-tbody">
-                    </tbody>
-                </table>
-            `;
-            const tbody = document.getElementById('response-search-tbody');
+            // Reset pagination
+            currentResponseSearchPage = 1;
+            currentResponseSearchResults = [];
 
             // Show progress bar if fetching
             if (fetchFresh) {
@@ -483,7 +563,7 @@ export function initExtractorUI() {
 
             try {
                 // Import state to access requests
-                const { state } = await import('./state.js');
+                const { state } = await import('../../core/state.js');
 
                 // Filter requests
                 const requestsToSearch = [];
@@ -505,13 +585,14 @@ export function initExtractorUI() {
 
                 if (requestsToSearch.length === 0) {
                     responseSearchResults.innerHTML = '<div class="empty-state">No requests found to search.</div>';
+                    currentResponseSearchResults = [];
+                    renderResponseSearchResults(currentResponseSearchResults);
                     return;
                 }
 
                 let processed = 0;
-                let matchCount = 0;
 
-                // Helper to check match
+                // Helper to check match and collect results
                 const checkMatch = (content, url, method, status) => {
                     let matchFound = false;
                     let matchSnippet = '';
@@ -541,19 +622,12 @@ export function initExtractorUI() {
                     }
 
                     if (matchFound) {
-                        matchCount++;
-                        const methodClass = method === 'POST' || method === 'PUT' || method === 'DELETE' ? 'method-write' : 'method-read';
-                        const statusClass = status >= 200 && status < 300 ? 'status-2xx' : (status >= 300 && status < 400 ? 'status-3xx' : (status >= 400 && status < 500 ? 'status-4xx' : 'status-5xx'));
-                        const fileName = url.split('/').pop() || url;
-
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td><span class="http-method ${methodClass}">${escapeHtml(method)}</span></td>
-                            <td class="secret-file"><a href="${escapeHtml(url)}" target="_blank" title="${escapeHtml(url)}">${escapeHtml(fileName)}</a></td>
-                            <td><span class="status-badge ${statusClass}">${status}</span></td>
-                            <td class="secret-match" title="${escapeHtml(matchSnippet)}">${escapeHtml(matchSnippet)}</td>
-                        `;
-                        tbody.appendChild(row);
+                        currentResponseSearchResults.push({
+                            method: method,
+                            url: url,
+                            status: status,
+                            matchSnippet: matchSnippet
+                        });
                     }
                     return matchFound;
                 };
@@ -598,13 +672,18 @@ export function initExtractorUI() {
                     }
                 }
 
-                if (matchCount === 0) {
-                    responseSearchResults.innerHTML = '<div class="empty-state">No matches found.</div>';
+                // Render results with pagination
+                renderResponseSearchResults(currentResponseSearchResults);
+
+                // Update domain filter with domains from results
+                if (activeTab === 'response-search') {
+                    populateDomainFilter();
                 }
 
             } catch (e) {
                 console.error('Search failed:', e);
                 responseSearchResults.innerHTML = `<div class="empty-state error">Search failed: ${e.message}</div>`;
+                currentResponseSearchResults = [];
             } finally {
                 responseSearchBtn.disabled = false;
                 responseSearchBtn.textContent = 'Search';

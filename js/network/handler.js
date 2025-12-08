@@ -1,8 +1,13 @@
-// Request Handler Module
-import { state, addToHistory } from './state.js';
-import { elements, updateHistoryButtons } from './ui.js';
-import { parseRequest, executeRequest } from './network.js';
-import { formatBytes, renderDiff, highlightHTTP } from './utils.js';
+// Request Handler Module - High-level orchestrator for sending requests
+import { state, addToHistory } from '../core/state.js';
+import { elements, updateHistoryButtons } from '../ui/main-ui.js';
+import { parseRequest } from './capture.js';
+import { sendRequest } from './request-sender.js';
+import { formatRawResponse, getStatusClass } from './response-parser.js';
+import { formatBytes } from '../core/utils/format.js';
+import { renderDiff } from '../core/utils/misc.js';
+import { highlightHTTP } from '../core/utils/network.js';
+import { events, EVENT_NAMES } from '../core/events.js';
 
 export async function handleSendRequest() {
     const rawContent = elements.rawRequestInput.innerText;
@@ -20,33 +25,16 @@ export async function handleSendRequest() {
 
         console.log('Sending request to:', url);
 
-        const result = await executeRequest(url, options);
+        const result = await sendRequest(url, options);
 
         elements.resTime.textContent = `${result.duration}ms`;
         elements.resSize.textContent = formatBytes(result.size);
 
         elements.resStatus.textContent = `${result.status} ${result.statusText}`;
-        if (result.status >= 200 && result.status < 300) {
-            elements.resStatus.className = 'status-badge status-2xx';
-        } else if (result.status >= 400 && result.status < 500) {
-            elements.resStatus.className = 'status-badge status-4xx';
-        } else if (result.status >= 500) {
-            elements.resStatus.className = 'status-badge status-5xx';
-        }
+        elements.resStatus.className = getStatusClass(result.status);
 
-        // Build raw HTTP response
-        let rawResponse = `HTTP/1.1 ${result.status} ${result.statusText}\n`;
-        for (const [key, value] of result.headers) {
-            rawResponse += `${key}: ${value}\n`;
-        }
-        rawResponse += '\n';
-
-        try {
-            const json = JSON.parse(result.body);
-            rawResponse += JSON.stringify(json, null, 2);
-        } catch (e) {
-            rawResponse += result.body;
-        }
+        // Format raw HTTP response
+        const rawResponse = formatRawResponse(result);
 
         // Store current response
         state.currentResponse = rawResponse;

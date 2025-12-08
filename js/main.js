@@ -1,21 +1,23 @@
 // Main Entry Point
-import { state, addRequest } from './modules/state.js';
+import { state, addRequest } from './core/state.js';
 import {
     initUI, elements, renderRequestItem, filterRequests, updateHistoryButtons,
     clearAllRequestsUI, setupResizeHandle, setupSidebarResize, setupContextMenu,
     setupUndoRedo, captureScreenshot, exportRequests, importRequests, toggleAllGroups
-} from './modules/ui.js';
-import { setupNetworkListener } from './modules/network.js';
-import { setupBulkReplay } from './modules/bulk-replay.js';
-import { copyToClipboard, renderDiff, highlightHTTP, getHostname } from './modules/utils.js';
+} from './ui/main-ui.js';
+import { setupNetworkListener } from './network/capture.js';
+import { setupBulkReplay } from './features/bulk-replay/index.js';
+import { copyToClipboard } from './core/utils/dom.js';
+import { renderDiff } from './core/utils/misc.js';
+import { highlightHTTP, getHostname } from './core/utils/network.js';
 
 // Feature Modules
-import { initTheme } from './modules/theme.js';
-import { initMultiTabCapture } from './modules/multi-tab.js';
-import { initExtractorUI } from './modules/extractor-ui.js';
-import { setupAIFeatures } from './modules/ai.js';
-import { handleSendRequest } from './modules/request-handler.js';
-import { initSearch } from './modules/search.js';
+import { initTheme } from './ui/theme.js';
+import { initMultiTabCapture } from './network/multi-tab.js';
+import { initExtractorUI } from './features/extractors/ui.js';
+import { setupAIFeatures } from './features/ai/index.js';
+import { handleSendRequest } from './network/handler.js';
+import { initSearch } from './search/index.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize UI Elements

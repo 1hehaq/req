@@ -1,4 +1,4 @@
-import { escapeHtml } from "./utils.js";
+import { escapeHtml } from "./dom.js";
 
 class JSONFormatter {
     constructor() {

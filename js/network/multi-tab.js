@@ -1,6 +1,6 @@
 // Multi-tab Capture Module
-import { addRequest } from './state.js';
-import { renderRequestItem } from './ui.js';
+import { addRequest } from '../core/state.js';
+import { renderRequestItem } from '../ui/main-ui.js';
 
 export function initMultiTabCapture() {
     const multiTabBtn = document.getElementById('multi-tab-btn');

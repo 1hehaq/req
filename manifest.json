@@ -2,16 +2,13 @@
     "manifest_version": 3,
     "name": "rep+",
     "version": "1.0",
-    "description": "A lightweight Burp Repeater clone for Chrome DevTools.",
-    "author": "Bour Abdelhadi with help of LLM",
+    "description": "rep+ - Capture, modify, and replay HTTP requests in Chrome DevTools with AI-powered security analysis.",
     "permissions": [
         "activeTab",
-        "scripting",
         "storage"
     ],
     "optional_permissions": [
-        "webRequest",
-        "webRequestBlocking"
+        "webRequest"
     ],
     "host_permissions": [],
     "optional_host_permissions": [

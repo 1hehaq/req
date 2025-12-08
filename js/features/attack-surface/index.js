@@ -1,8 +1,7 @@
 // Attack Surface Analysis Module
 // Categorizes requests by attack surface using LLM
 
-import { streamExplanationWithSystem } from './ai.js';
-import { getAISettings } from './ai.js';
+import { streamExplanationWithSystem, getAISettings } from '../ai/index.js';
 
 /**
  * Build analysis prompt for LLM

@@ -43,7 +43,23 @@ export function setupNetworkListener(onRequestCaptured) {
         // Store the page URL that this request belongs to
         request.pageUrl = currentPageUrl || request.request.url;
 
-        onRequestCaptured(request);
+        // Fetch response content so we can show it without switching tabs
+        request.getContent((body, encoding) => {
+            const responseStatus = request.response?.status || request.response?.statusCode || '';
+            const responseStatusText = request.response?.statusText || '';
+            const responseHeaders = request.response?.headers || [];
+
+            const enhancedRequest = {
+                ...request,
+                responseBody: body || '',
+                responseEncoding: encoding || '',
+                responseStatus,
+                responseStatusText,
+                responseHeaders
+            };
+
+            onRequestCaptured(enhancedRequest);
+        });
     });
 }
 
