@@ -224,7 +224,7 @@ export function createRequestItemElement(request, index, categoryData) {
             displayLabel = request.request.url;
         }
         urlSpan.appendChild(document.createTextNode(displayLabel));
-        urlSpan.title = request.request.url;
+    urlSpan.title = request.request.url;
     }
 
     // Time span
@@ -493,10 +493,10 @@ export function renderRequestItem(request, index) {
         if (!pathGroup) {
             pathGroup = createPathGroup();
             // Insert path group before domain groups (if any)
-            const firstDomainGroup = pageContent.querySelector('.domain-group');
+        const firstDomainGroup = pageContent.querySelector('.domain-group');
             if (firstDomainGroup) {
                 pageContent.insertBefore(pathGroup, firstDomainGroup);
-            } else {
+        } else {
                 pageContent.appendChild(pathGroup);
             }
         }

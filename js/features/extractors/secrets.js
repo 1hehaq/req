@@ -162,7 +162,7 @@ export async function scanContentWithKingfisher(content, url) {
     if (!content) {
         return results;
     }
-    
+
     try {
         const { rules, scanWithKingfisherRules } = await loadKingfisherRules();
         if (!rules || rules.length === 0 || !scanWithKingfisherRules) {
@@ -182,36 +182,36 @@ export async function scanContentWithKingfisher(content, url) {
             const context = content.substring(contextStart, contextEnd);
             
             // Apply same false positive filters as regular secrets
-            let isFalsePositive = false;
-            for (const fpPattern of KNOWN_FALSE_POSITIVE_PATTERNS) {
+                let isFalsePositive = false;
+                for (const fpPattern of KNOWN_FALSE_POSITIVE_PATTERNS) {
                 if (fpPattern.test(result.match)) {
-                    isFalsePositive = true;
-                    break;
+                        isFalsePositive = true;
+                        break;
+                    }
                 }
-            }
-            if (isFalsePositive) continue;
-            
+                if (isFalsePositive) continue;
+
             // Check context patterns
-            let skipDueToContext = false;
-            for (const contextPattern of FALSE_POSITIVE_CONTEXT_PATTERNS) {
-                if (contextPattern.test(context)) {
-                    skipDueToContext = true;
-                    break;
+                let skipDueToContext = false;
+                for (const contextPattern of FALSE_POSITIVE_CONTEXT_PATTERNS) {
+                    if (contextPattern.test(context)) {
+                        skipDueToContext = true;
+                        break;
+                    }
                 }
-            }
-            if (skipDueToContext) continue;
-            
-            // Check if it's likely base64 data
+                if (skipDueToContext) continue;
+
+                // Check if it's likely base64 data
             if (isLikelyBase64Data(result.match, context)) continue;
-            
+
             // Get line context
             const lineStart = content.lastIndexOf('\n', result.index) + 1;
             const lineEnd = content.indexOf('\n', result.index);
-            const line = content.substring(lineStart, lineEnd === -1 ? content.length : lineEnd);
-            
+                const line = content.substring(lineStart, lineEnd === -1 ? content.length : lineEnd);
+
             // Skip if in comment
-            if (isInComment(line)) continue;
-            
+                if (isInComment(line)) continue;
+
             // Calculate confidence based on rule confidence and entropy
             let confidence = 50;
             if (result.confidence === 'high') confidence = 85;
@@ -222,17 +222,17 @@ export async function scanContentWithKingfisher(content, url) {
                 const entropy = parseFloat(result.entropy);
                 if (entropy > 4.5) confidence += 10;
                 else if (entropy < 3.5) confidence -= 10;
-            }
-            
-            // Only include high-confidence results
-            if (confidence < 60) continue;
+                }
+
+                // Only include high-confidence results
+                if (confidence < 60) continue;
             
             // Use ruleName for a cleaner, human-readable type
             // Fallback to ruleId if ruleName is not available
             const typeName = result.ruleName || result.ruleId || 'Unknown Secret';
-            
-            results.push({
-                file: url,
+
+                results.push({
+                    file: url,
                 type: typeName,
                 match: result.match,
                 index: result.index,
@@ -240,9 +240,9 @@ export async function scanContentWithKingfisher(content, url) {
                 entropy: result.entropy || '0.00',
                 ruleName: result.ruleName,
                 ruleId: result.ruleId
-            });
-        }
-    } catch (e) {
+                });
+            }
+        } catch (e) {
         console.warn('Error scanning with Kingfisher rules:', e);
     }
     
@@ -257,14 +257,14 @@ export async function scanForSecrets(requests, onProgress, onSecretFound) {
 
     for (const req of requests) {
         try {
-            // Only process JavaScript files
+        // Only process JavaScript files
             if (!req || !req.request || !req.response) {
                 processed++;
                 if (onProgress) onProgress(processed, total);
                 continue;
             }
             
-            const url = req.request.url.toLowerCase();
+        const url = req.request.url.toLowerCase();
             const mime = req.response?.content?.mimeType?.toLowerCase() || '';
             const isJS = url.endsWith('.js') || 
                        mime.includes('javascript') || 
@@ -272,7 +272,7 @@ export async function scanForSecrets(requests, onProgress, onSecretFound) {
                        mime.includes('application/javascript');
             
             if (isJS) {
-                try {
+            try {
                     // Use stored responseBody if available, otherwise try getContent
                     let content = null;
                     
@@ -288,15 +288,15 @@ export async function scanForSecrets(requests, onProgress, onSecretFound) {
                                 } else {
                                     resolve(body || '');
                                 }
-                            });
-                        });
+                    });
+                });
                     } else {
                         processed++;
                         if (onProgress) onProgress(processed, total);
                         continue;
                     }
 
-                    if (content) {
+                if (content) {
                         // Scan with Kingfisher rules only
                         try {
                             const kingfisherSecrets = await scanContentWithKingfisher(content, req.request.url);
@@ -316,14 +316,14 @@ export async function scanForSecrets(requests, onProgress, onSecretFound) {
                                         onSecretFound(secret);
                                     }
                                 }
-                            }
+                }
                         } catch (e) {
                             console.warn('Error scanning with Kingfisher:', e);
                         }
                     }
                 } catch (err) {
                     console.error(`Error scanning request ${url}:`, err);
-                }
+            }
             }
         } catch (err) {
             console.error('Error processing request:', err);

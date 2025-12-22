@@ -33,8 +33,8 @@ export function toggleStar(request) {
 
     // Only refresh filter if star filter is active, otherwise just update the UI
     if (state.starFilterActive) {
-        const scrollTop = requestList ? requestList.scrollTop : 0;
-        events.emit('request:filtered', { preserveScroll: true, scrollTop });
+    const scrollTop = requestList ? requestList.scrollTop : 0;
+    events.emit('request:filtered', { preserveScroll: true, scrollTop });
     }
 }
 

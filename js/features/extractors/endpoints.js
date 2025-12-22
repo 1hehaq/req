@@ -210,7 +210,7 @@ export function extractEndpoints(content, sourceFile) {
 
             // Normalize source file for deduplication (remove query params, fragments)
             const normalizedSourceFile = normalizeSourceFile(sourceFile);
-            
+
             // Create unique key for deduplication
             const uniqueKey = `${endpoint}|${normalizedSourceFile}`;
             if (seenEndpoints.has(uniqueKey)) continue;
